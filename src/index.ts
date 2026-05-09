@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { mkdirSync } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createId, nowIso, type ArtifactRecord, type LogChunk, type RuntimeEvent, type RuntimeRecord, type SessionRecord, type TaskRecord, type TaskStore } from "@agentdispatch/core";
@@ -13,6 +14,7 @@ export class SqliteTaskStore implements TaskStore {
 
   constructor(options: SqliteTaskStoreOptions) {
     this.stateDir = options.stateDir;
+    mkdirSync(options.stateDir, { recursive: true });
     this.db = new Database(join(options.stateDir, "agentdispatch.sqlite"));
     this.initialize();
   }
@@ -84,6 +86,10 @@ export class SqliteTaskStore implements TaskStore {
     return this.db.prepare("select data from artifacts where task_id = ? order by created_at asc").all(taskId).map((row: any) => JSON.parse(row.data));
   }
 
+  appliedMigrations(): string[] {
+    return this.db.prepare("select id from schema_migrations order by id asc").all().map((row: any) => row.id);
+  }
+
   async saveArtifactFile(taskId: string, name: string, bytes: Uint8Array, contentType = "application/octet-stream"): Promise<ArtifactRecord> {
     await this.ensureReady();
     const uri = join(this.stateDir, "artifacts", taskId, name);
@@ -96,17 +102,33 @@ export class SqliteTaskStore implements TaskStore {
   }
 
   private initialize(): void {
-    this.db.exec(`
-      create table if not exists tasks (id text primary key, data text not null, status text not null, updated_at text not null);
-      create table if not exists runtimes (id text primary key, task_id text not null, data text not null, status text not null, updated_at text not null);
-      create table if not exists sessions (id text primary key, task_id text not null, data text not null, status text not null, updated_at text not null);
-      create table if not exists events (id text primary key, task_id text not null, sequence integer not null, type text not null, data text not null, created_at text not null);
-      create unique index if not exists events_task_sequence on events (task_id, sequence);
-      create table if not exists artifacts (id text primary key, task_id text not null, data text not null, created_at text not null);
-    `);
+    this.db.exec("create table if not exists schema_migrations (id text primary key, applied_at text not null)");
+    for (const migration of migrations) {
+      const applied = this.db.prepare("select id from schema_migrations where id = ?").get(migration.id);
+      if (applied) continue;
+      const transaction = this.db.transaction(() => {
+        this.db.exec(migration.sql);
+        this.db.prepare("insert into schema_migrations (id, applied_at) values (?, ?)").run(migration.id, nowIso());
+      });
+      transaction();
+    }
   }
 
   private logPath(taskId: string): string {
     return join(this.stateDir, "logs", `${taskId}.log`);
   }
 }
+
+const migrations = [
+  {
+    id: "001_initial",
+    sql: `
+      create table if not exists tasks (id text primary key, data text not null, status text not null, updated_at text not null);
+      create table if not exists runtimes (id text primary key, task_id text not null, data text not null, status text not null, updated_at text not null);
+      create table if not exists sessions (id text primary key, task_id text not null, data text not null, status text not null, updated_at text not null);
+      create table if not exists events (id text primary key, task_id text not null, sequence integer not null, type text not null, data text not null, created_at text not null);
+      create unique index if not exists events_task_sequence on events (task_id, sequence);
+      create table if not exists artifacts (id text primary key, task_id text not null, data text not null, created_at text not null);
+    `
+  }
+] as const;
