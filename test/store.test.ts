@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { nowIso, type TaskRecord } from "@agentdispatch/core";
+import { nowIso, type RuntimeRecord, type TaskRecord } from "@agentdispatch/core";
 import { SqliteTaskStore } from "../src/index.js";
 
 let stateDir: string;
@@ -29,6 +29,23 @@ describe("SqliteTaskStore", () => {
     await store.saveTask(task);
     const reopened = new SqliteTaskStore({ stateDir });
     await expect(reopened.getTask("task_1")).resolves.toMatchObject({ id: "task_1", provider: "aws" });
+  });
+
+  it("updates runtime cleanup state across store instances", async () => {
+    const runtime = createRuntime("runtime_1", "task_1");
+    await store.saveRuntime(runtime);
+    await store.updateRuntime("runtime_1", {
+      status: "deleted",
+      cleanupStatus: "completed",
+      providerRefs: { runtimeId: "provider_runtime_1", cleanupId: "cleanup_1" },
+      updatedAt: nowIso()
+    });
+    const reopened = new SqliteTaskStore({ stateDir });
+    await expect(reopened.updateRuntime("runtime_1", { updatedAt: nowIso() })).resolves.toMatchObject({
+      status: "deleted",
+      cleanupStatus: "completed",
+      providerRefs: { runtimeId: "provider_runtime_1", cleanupId: "cleanup_1" }
+    });
   });
 
   it("paginates events by sequence", async () => {
@@ -72,6 +89,23 @@ function createTask(id: string): TaskRecord {
     backend: "aws-agentcore",
     status: "queued",
     providerRefs: {},
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+}
+
+function createRuntime(id: string, taskId: string): RuntimeRecord {
+  const timestamp = nowIso();
+  return {
+    id,
+    taskId,
+    provider: "aws",
+    accountProfile: "dev-aws",
+    capability: "agent-runtime",
+    backend: "aws-agentcore",
+    status: "ready",
+    providerRefs: { runtimeId: "provider_runtime_1" },
+    cleanupStatus: "pending",
     createdAt: timestamp,
     updatedAt: timestamp
   };

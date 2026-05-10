@@ -49,6 +49,15 @@ export class SqliteTaskStore implements TaskStore {
     this.db.prepare("insert or replace into runtimes (id, task_id, data, status, updated_at) values (?, ?, ?, ?, ?)").run(runtime.id, runtime.taskId, JSON.stringify(runtime), runtime.status, runtime.updatedAt);
   }
 
+  async updateRuntime(runtimeId: string, patch: Partial<RuntimeRecord>): Promise<RuntimeRecord> {
+    const row = this.db.prepare("select data from runtimes where id = ?").get(runtimeId) as { data: string } | undefined;
+    if (!row) throw new Error(`Runtime ${runtimeId} was not found.`);
+    const current = JSON.parse(row.data) as RuntimeRecord;
+    const next = { ...current, ...patch };
+    this.db.prepare("update runtimes set data = ?, status = ?, updated_at = ? where id = ?").run(JSON.stringify(next), next.status, next.updatedAt, runtimeId);
+    return next;
+  }
+
   async saveSession(session: SessionRecord): Promise<void> {
     this.db.prepare("insert or replace into sessions (id, task_id, data, status, updated_at) values (?, ?, ?, ?, ?)").run(session.id, session.taskId, JSON.stringify(session), session.status, session.updatedAt);
   }
