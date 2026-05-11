@@ -1,5 +1,5 @@
 {
-  "name": "@agentdispatch/store-sqlite",
+  "name": "@agent-dispatch/store-sqlite",
   "version": "0.1.0",
   "description": "SQLite task store and filesystem log/artifact storage for AgentDispatch.",
   "type": "module",
@@ -10,24 +10,39 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@agentdispatch/core": "^0.1.0"
+    "@agent-dispatch/core": "^0.1.0"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0"
   },
   "devDependencies": {
-    "@agentdispatch/core": "file:../agentdispatch-core",
+    "@agent-dispatch/core": "^0.1.0",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.2",
     "tsup": "^8.3.5",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agent-dispatch/store-sqlite.git"
+  },
+  "bugs": {
+    "url": "https://github.com/agent-dispatch/store-sqlite/issues"
+  },
+  "homepage": "https://github.com/agent-dispatch/store-sqlite#readme",
+  "publishConfig": {
+    "access": "public"
   }
 }

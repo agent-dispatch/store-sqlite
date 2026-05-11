@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { nowIso, type RuntimeRecord, type TaskRecord } from "@agentdispatch/core";
+import { nowIso, type RuntimeRecord, type TaskRecord } from "@agent-dispatch/core";
 import { SqliteTaskStore } from "../src/index.js";
 
 let stateDir: string;

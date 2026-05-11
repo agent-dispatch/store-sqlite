@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { createId, nowIso, type ArtifactRecord, type LogChunk, type RuntimeEvent, type RuntimeRecord, type SessionRecord, type TaskRecord, type TaskStore } from "@agentdispatch/core";
+import { createId, nowIso, type ArtifactRecord, type LogChunk, type RuntimeEvent, type RuntimeRecord, type SessionRecord, type TaskRecord, type TaskStore } from "@agent-dispatch/core";
 
 export interface SqliteTaskStoreOptions {
   stateDir: string;
