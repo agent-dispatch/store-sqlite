@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { appendFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { dirname, join, resolve, sep } from "node:path";
 import { createId, nowIso, type ArtifactRecord, type LogChunk, type RuntimeEvent, type RuntimeRecord, type SessionRecord, type TaskRecord, type TaskStore } from "@agent-dispatch/core";
 
 export interface SqliteTaskStoreOptions {
@@ -75,9 +75,7 @@ export class SqliteTaskStore implements TaskStore {
 
   async appendLog(taskId: string, chunk: string): Promise<void> {
     await this.ensureReady();
-    const path = this.logPath(taskId);
-    const existing = await readFile(path, "utf8").catch(() => "");
-    await writeFile(path, `${existing}${chunk}`);
+    await appendFile(this.logPath(taskId), chunk);
   }
 
   async readLogs(taskId: string, cursor = 0, limit = 64_000): Promise<LogChunk> {
@@ -101,13 +99,17 @@ export class SqliteTaskStore implements TaskStore {
 
   async saveArtifactFile(taskId: string, name: string, bytes: Uint8Array, contentType = "application/octet-stream"): Promise<ArtifactRecord> {
     await this.ensureReady();
-    const uri = join(this.stateDir, "artifacts", taskId, name);
+    const uri = this.artifactPath(taskId, name);
     await mkdir(dirname(uri), { recursive: true });
     await writeFile(uri, bytes);
     const sizeBytes = (await stat(uri)).size;
     const artifact = { id: createId("art"), taskId, kind: "file", uri, contentType, sizeBytes, createdAt: nowIso() };
     await this.saveArtifact(artifact);
     return artifact;
+  }
+
+  close(): void {
+    this.db.close();
   }
 
   private initialize(): void {
@@ -121,6 +123,15 @@ export class SqliteTaskStore implements TaskStore {
       });
       transaction();
     }
+  }
+
+  private artifactPath(taskId: string, name: string): string {
+    const root = resolve(this.stateDir, "artifacts", taskId);
+    const uri = resolve(root, name);
+    if (uri !== root && !uri.startsWith(`${root}${sep}`)) {
+      throw new Error("Artifact name must stay within the task artifact directory.");
+    }
+    return uri;
   }
 
   private logPath(taskId: string): string {
