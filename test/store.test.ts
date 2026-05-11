@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -14,6 +14,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  store.close();
   await rm(stateDir, { recursive: true, force: true });
 });
 
@@ -67,12 +68,35 @@ describe("SqliteTaskStore", () => {
     expect(second).toMatchObject({ data: "cde", nextCursor: 5 });
   });
 
+  it("appends log chunks without rewriting existing content", async () => {
+    await Promise.all(Array.from({ length: 25 }, (_, index) => store.appendLog("task_1", `${index}\n`)));
+    const logs = await store.readLogs("task_1", 0, 10_000);
+
+    for (let index = 0; index < 25; index += 1) {
+      expect(logs.data).toContain(`${index}\n`);
+    }
+  });
+
   it("persists artifact metadata and files", async () => {
     const artifact = await store.saveArtifactFile("task_1", "result.txt", Buffer.from("done"), "text/plain");
     const artifacts = await store.listArtifacts("task_1");
 
     expect(artifacts).toHaveLength(1);
     expect(artifacts[0]).toMatchObject({ id: artifact.id, kind: "file", contentType: "text/plain", sizeBytes: 4 });
+    await expect(readFile(artifact.uri, "utf8")).resolves.toBe("done");
+  });
+
+  it("rejects artifact paths outside the task artifact directory", async () => {
+    await expect(store.saveArtifactFile("task_1", "../escape.txt", Buffer.from("nope"))).rejects.toThrow("Artifact name");
+    await expect(store.saveArtifactFile("task_1", "/tmp/escape.txt", Buffer.from("nope"))).rejects.toThrow("Artifact name");
+    await expect(stat(join(stateDir, "artifacts", "escape.txt"))).rejects.toThrow();
+  });
+
+  it("closes the database connection explicitly", async () => {
+    store.close();
+    expect(() => store.appliedMigrations()).toThrow();
+    store = new SqliteTaskStore({ stateDir });
+    expect(store.appliedMigrations()).toEqual(["001_initial"]);
   });
 });
 
