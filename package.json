@@ -2,6 +2,16 @@
   "name": "@agent-dispatch/store-sqlite",
   "version": "0.1.0",
   "description": "SQLite task store and filesystem log/artifact storage for AgentDispatch.",
+  "keywords": [
+    "agentdispatch",
+    "sqlite",
+    "task-store",
+    "durable-tasks",
+    "cloud-agents",
+    "subagents",
+    "agent-orchestration",
+    "typescript"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "exports": {
