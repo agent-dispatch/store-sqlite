@@ -1,6 +1,7 @@
 # @agent-dispatch/store-sqlite
 
 [![npm](https://img.shields.io/npm/v/@agent-dispatch/store-sqlite.svg)](https://www.npmjs.com/package/@agent-dispatch/store-sqlite)
+[![CI](https://github.com/agent-dispatch/store-sqlite/actions/workflows/ci.yml/badge.svg)](https://github.com/agent-dispatch/store-sqlite/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/@agent-dispatch/store-sqlite.svg)](https://www.npmjs.com/package/@agent-dispatch/store-sqlite)
 
 SQLite persistence for local AgentDispatch deployments.
